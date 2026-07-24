@@ -11,6 +11,20 @@ class SubmissionRepository {
 
     return response;
   }
+
+  async getSubmissionsByUserAndProblem(userId, problemId) {
+    return this.submissionModel
+      .find({ userID: userId, problemID: problemId })
+      .sort({ createdAt: -1 });
+  }
+
+  async updateSubmissionStatus(submissionId, status, executionTime = 0) {
+    return this.submissionModel.findByIdAndUpdate(
+      submissionId,
+      { status, executionTime },
+      { new: true }
+    );
+  }
 }
 
 module.exports = SubmissionRepository;

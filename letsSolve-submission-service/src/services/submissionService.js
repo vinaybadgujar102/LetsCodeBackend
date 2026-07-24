@@ -1,8 +1,24 @@
 const { fetchProblemDetails } = require("../apis/problemAdminApi");
 const SubmissionProducer = require("../producers/submissionQueueProducer");
 
+const LANGUAGE_MAP = {
+  python: "PYTHON",
+  java: "JAVA",
+  c_cpp: "CPP",
+  cpp: "CPP",
+  PYTHON: "PYTHON",
+  JAVA: "JAVA",
+  CPP: "CPP",
+};
+
+function normalizeLanguage(language) {
+  if (!language) return language;
+  const mapped = LANGUAGE_MAP[language] || LANGUAGE_MAP[language.toLowerCase()];
+  return mapped || language.toUpperCase();
+}
+
 class SubmissionService {
-  contructor(submissionRepository) {
+  constructor(submissionRepository) {
     this.submissionRepository = submissionRepository;
   }
 
@@ -12,8 +28,9 @@ class SubmissionService {
 
   async createSubmission(submissionPayload) {
     // hit the problem admin service and fetch the problems details
-    const problemId = submissionPayload.problemId;
-    const userId = submissionPayload.userId;
+    const problemId =
+      submissionPayload.problemId || submissionPayload.problemID;
+    const userId = submissionPayload.userId || submissionPayload.userID;
 
     const problemAdminApiResponse = await fetchProblemDetails(problemId);
 
@@ -22,11 +39,19 @@ class SubmissionService {
       return false;
     }
 
+    const normalizedLanguage = normalizeLanguage(submissionPayload.language);
+    submissionPayload.language = normalizedLanguage;
+    submissionPayload.problemID = problemId;
+    submissionPayload.userID = userId;
+
     const languageCodeStub = problemAdminApiResponse.data.codeStubs.find(
       (codeStub) =>
-        codeStub.language.toLowerCase() ===
-        submissionPayload.language.toLowerCase()
+        normalizeLanguage(codeStub.language) === normalizedLanguage
     );
+
+    if (!languageCodeStub) {
+      throw { message: `No code stub found for language: ${normalizedLanguage}` };
+    }
 
     submissionPayload.code =
       languageCodeStub.startSnippet +
@@ -44,12 +69,13 @@ class SubmissionService {
     }
     console.log("submission created", submission);
 
+    const firstTestCase = problemAdminApiResponse.data.testCases[0];
     const response = await SubmissionProducer({
       [submission._id]: {
         code: submission.code,
-        language: submission.language,
-        inputCase: problemAdminApiResponse.data.testCases[0].inputCase,
-        outputCase: problemAdminApiResponse.data.testCases[0].outputCase,
+        language: normalizedLanguage,
+        inputCase: firstTestCase.input,
+        outputCase: firstTestCase.output,
         userId: userId,
         submissionId: submission._id,
       },
@@ -60,6 +86,21 @@ class SubmissionService {
       queueResponse: response,
       submission,
     };
+  }
+
+  async getSubmissionsByUserAndProblem(userId, problemId) {
+    return this.submissionRepository.getSubmissionsByUserAndProblem(
+      userId,
+      problemId
+    );
+  }
+
+  async updateSubmissionStatus(submissionId, status, executionTime = 0) {
+    return this.submissionRepository.updateSubmissionStatus(
+      submissionId,
+      status,
+      executionTime
+    );
   }
 }
 

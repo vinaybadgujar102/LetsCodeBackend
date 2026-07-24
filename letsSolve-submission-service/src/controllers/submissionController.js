@@ -19,4 +19,25 @@ async function createSubmission(req, res) {
   });
 }
 
-module.exports = { pingRequest, createSubmission };
+async function getUserProblemSubmissions(req, res) {
+  const { userId, problemId } = req.params;
+
+  const submissions =
+    await this.submissionService.getSubmissionsByUserAndProblem(
+      userId,
+      problemId
+    );
+
+  return res.status(200).send({
+    error: {},
+    data: submissions,
+    success: true,
+    message: "Fetched submissions successfully",
+  });
+}
+
+module.exports = {
+  pingRequest,
+  createSubmission,
+  getUserProblemSubmissions,
+};
