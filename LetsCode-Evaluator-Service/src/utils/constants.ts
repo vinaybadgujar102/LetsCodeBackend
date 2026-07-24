@@ -1,6 +1,6 @@
 export const PYTHON_IMAGE = "python:3.8-slim";
-export const JAVA_IMAGE = "eclipse-temurin:21-jdk";
-export const CPP_IMAGE = "gcc:latest";
+export const JAVA_IMAGE = "eclipse-temurin:21-jdk-alpine";
+export const CPP_IMAGE = "gcc:14-bookworm-slim";
 
 export const submission_queue = "SubmissionQueue";
 // this will represent header size of docker stream
