@@ -5,8 +5,8 @@ const Redis = require("ioredis");
 const bodyParser = require("body-parser");
 
 const redisCache = new Redis({
-  host: "redis",
-  port: 6379,
+  host: process.env.REDIS_HOST || "127.0.0.1",
+  port: Number(process.env.REDIS_PORT) || 6379,
 });
 
 const app = express();
@@ -23,8 +23,10 @@ const io = new Server(httpServer, {
 
 io.on("connection", (socket) => {
   console.log("a user connected");
-  socket.on("disconnect", () => {
-    console.log("user disconnected");
+
+  socket.on("setUserId", async (userId) => {
+    await redisCache.set(userId, socket.id);
+    console.log("Mapped user", userId, "to", socket.id);
   });
 
   socket.on("getConnectionId", async (userId) => {
@@ -32,19 +34,32 @@ io.on("connection", (socket) => {
     console.log("Getting connection id for user", userId, connId);
     socket.emit("connectionId", connId);
   });
+
+  socket.on("disconnect", () => {
+    console.log("user disconnected");
+  });
 });
 
 app.post("/sendPayload", async (req, res) => {
+  const { userId, payload } = req.body;
+
   if (!userId || !payload) {
-    return res.sendStatus(400).send("Bad request");
+    return res.status(400).send("Bad request");
   }
 
   const socketId = await redisCache.get(userId);
   if (!socketId) {
-    return res.sendStatus(404).send("Bad request");
+    return res.status(404).send("User not connected");
   }
+
+  io.to(socketId).emit("submissionPayloadResponse", {
+    response: payload.response || payload,
+  });
+
+  return res.sendStatus(200);
 });
 
-httpServer.listen(3000, () => {
-  console.log("listening on *:3000");
+const PORT = Number(process.env.PORT) || 3003;
+httpServer.listen(PORT, () => {
+  console.log(`listening on *:${PORT}`);
 });

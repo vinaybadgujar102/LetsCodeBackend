@@ -1,52 +1,43 @@
 import CodeExecutorStrategy, {
   ExecutionResponse,
 } from "../types/codeExecutorStrategy";
-import { PYTHON_IMAGE } from "../utils/constants";
+import { CPP_IMAGE } from "../utils/constants";
 import createContainer from "./containerFactory";
 import { decodeDockerStream } from "./dockerHelper";
 
-class PythonExecutor implements CodeExecutorStrategy {
+class CppExecutor implements CodeExecutorStrategy {
   async execute(
     code: string,
     inputTestCase: string,
     outputTestCase: string
   ): Promise<ExecutionResponse> {
-    console.log("Initialising a new python container");
-
+    console.log("Initialising a new Cpp container");
     console.log(code, inputTestCase, outputTestCase);
 
     const rawLogBuffer: Buffer[] = [];
-    // const pythonDockerContainer = await createContainer("python:3.8-slim", [
-    //   "python",
-    //   "-c",
-    //   code,
-    //   "stty -echo",
-    // ]);
 
     const runCommand = `echo '${code.replace(
       /'/g,
       `'\\"`
-    )}' > test.py && echo '${inputTestCase.replace(
+    )}' > main.cpp && g++ main.cpp -o main && echo '${inputTestCase.replace(
       /'/g,
       `'\\"`
-    )}' | python3 test.py`;
+    )}' | ./main`;
 
-    const pythonDockerContainer = await createContainer(PYTHON_IMAGE, [
+    const cppDockerContainer = await createContainer(CPP_IMAGE, [
       "/bin/bash",
       "-c",
       runCommand,
     ]);
 
-    // starting the container
-    await pythonDockerContainer.start();
-
+    await cppDockerContainer.start();
     console.log("Container started");
 
-    const loggerStream = await pythonDockerContainer.logs({
+    const loggerStream = await cppDockerContainer.logs({
       stdout: true,
       stderr: true,
       timestamps: false,
-      follow: true, // whether the logs are streamed or returned as a string
+      follow: true,
     });
 
     loggerStream.on("data", (chunk) => {
@@ -58,24 +49,28 @@ class PythonExecutor implements CodeExecutorStrategy {
         loggerStream,
         rawLogBuffer
       );
+
       if (codeResponse.trim() === outputTestCase.trim()) {
         return {
           output: codeResponse,
           status: "COMPLETED",
         };
+      } else {
+        return {
+          output: codeResponse,
+          status: "WA",
+        };
       }
-      return {
-        output: codeResponse,
-        status: "WA",
-      };
     } catch (error) {
+      if (error === "TLE") {
+        await cppDockerContainer.kill();
+      }
       return {
         output: error as string,
         status: "ERROR",
       };
     } finally {
-      // remove the container
-      await pythonDockerContainer.remove({ force: true });
+      await cppDockerContainer.remove({ force: true });
     }
   }
 
@@ -84,12 +79,15 @@ class PythonExecutor implements CodeExecutorStrategy {
     rawLogBuffer: Buffer[]
   ): Promise<string> {
     return new Promise((res, rej) => {
+      const timeout = setTimeout(() => {
+        console.log("Timed out");
+        rej("TLE");
+      }, 2000);
+
       loggerStream.on("end", () => {
-        console.log(rawLogBuffer);
+        clearTimeout(timeout);
         const completeBuffer = Buffer.concat(rawLogBuffer);
         const decodedStream = decodeDockerStream(completeBuffer);
-        console.log(decodedStream);
-        console.log(decodedStream.stdout);
         if (decodedStream.stderr) {
           rej(decodedStream.stderr);
         } else {
@@ -100,4 +98,4 @@ class PythonExecutor implements CodeExecutorStrategy {
   }
 }
 
-export default PythonExecutor;
+export default CppExecutor;

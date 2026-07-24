@@ -10,7 +10,7 @@ const problemSchema = new Schema({
     type: String,
     required: [true, "Description is required"],
   },
-  diffiulty: {
+  difficulty: {
     type: String,
     enum: ["easy", "medium", "hard"],
     required: [true, "Difficulty is required"],
@@ -38,6 +38,10 @@ const problemSchema = new Schema({
       startSnippet: {
         type: String,
         required: [true, "Start snippet is required"],
+      },
+      userSnippet: {
+        type: String,
+        required: [true, "User snippet is required"],
       },
       endSnippet: {
         type: String,

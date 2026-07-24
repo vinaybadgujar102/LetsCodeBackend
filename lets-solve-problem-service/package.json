@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "npx nodemon src/index.js",
-    "test": "npx jest"
+    "start": "node src/index.js",
+    "test": "npx jest",
+    "seed": "node src/seeds/seedProblems.js"
   },
   "jest": {
     "testEnvironment": "node"
@@ -13,6 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "http-status-codes": "^2.3.0",
@@ -26,6 +29,7 @@
     "winston-mongodb": "^6.0.0"
   },
   "devDependencies": {
-    "@jest/globals": "^29.7.0"
+    "@jest/globals": "^29.7.0",
+    "@types/cors": "^2.8.19"
   }
 }

@@ -25,9 +25,9 @@ async function addProblem(req, res, next) {
   }
 }
 
-function getProblem(req, res, next) {
+async function getProblem(req, res, next) {
   try {
-    const problem = problemService.getProblemById(req.params.id);
+    const problem = await problemService.getProblemById(req.params.id);
     return res.status(StatusCodes.OK).json({
       success: true,
       message: "Problem fetched successfully",
@@ -67,9 +67,9 @@ async function deleteProblem(req, res, next) {
   }
 }
 
-function updateProblem(req, res, next) {
+async function updateProblem(req, res, next) {
   try {
-    const problem = problemService.updateProblem(req.params.id, req.body);
+    const problem = await problemService.updateProblem(req.params.id, req.body);
     return res.status(StatusCodes.OK).json({
       success: true,
       message: "Problem updated successfully",
