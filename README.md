@@ -4,16 +4,36 @@ Microservices backend for **LetsSolve** — a coding practice platform where use
 
 ## Architecture
 
-```
-User → Submission Service → Problem Service (fetch problem details)
-                ↓
-         Redis (BullMQ)
-                ↓
-      Evaluator Service (Docker code execution)
-                ↓
-         Redis (BullMQ)
-                ↓
-      Socket Service → WebSocket (real-time result to user)
+```mermaid
+flowchart LR
+  User([User / Frontend])
+
+  subgraph Backend
+    Problem[Problem Service<br/>:3000]
+    Submission[Submission Service<br/>:3001]
+    Evaluator[Evaluator Service<br/>:3002]
+    Socket[Socket Service<br/>:3003]
+  end
+
+  Mongo[(MongoDB Atlas)]
+  Redis[(Redis / BullMQ)]
+  Docker[[Docker containers<br/>Python · Java · C++]]
+
+  User -->|REST| Problem
+  User -->|POST submission| Submission
+  User <-->|Socket.IO| Socket
+
+  Submission -->|fetch problem + tests| Problem
+  Problem --> Mongo
+  Submission --> Mongo
+
+  Submission -->|enqueue job| Redis
+  Redis -->|consume job| Evaluator
+  Evaluator -->|run code| Docker
+  Evaluator -->|enqueue result| Redis
+  Redis -->|result worker| Submission
+  Submission -->|sendPayload| Socket
+  Socket -->|submissionPayloadResponse| User
 ```
 
 ## Services
